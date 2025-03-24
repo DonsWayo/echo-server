@@ -1,21 +1,23 @@
-.PHONY: run test
+.PHONY: run test test-coverage dev docker-build docker-run clean
 
-# Run the application
 run:
 	go run ./cmd/echo-server/main.go
 
-# Run tests
 test:
-	go test -v ./...
+	go test -v ./tests/... ./internal/...
 
-# Run with hot reload (requires air: https://github.com/cosmtrek/air)
+test-coverage:
+	go test -v -coverprofile=coverage.out ./tests/... ./internal/...
+	go tool cover -html=coverage.out -o coverage.html
+
 dev:
 	air -c .air.toml
 
-# Build Docker image
 docker-build:
 	docker build -t echo-server .
 
-# Run Docker container
 docker-run:
 	docker run -p 80:80 echo-server
+
+clean:
+	rm -rf tmp/ coverage.out coverage.html
