@@ -1,18 +1,56 @@
-name: Build Docker Image
+name: Build and Push Docker Image
+
 on:
   workflow_dispatch:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
 
 jobs:
-  build:
-    uses: a-safe-digital/actions/.github/workflows/build-docker-image.yaml@v7.1
-    secrets:
-      NPM_TOKEN: ${{ secrets.GH_TOKEN }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.CONEK_DEV_AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.CONEK_DEV_AWS_SECRET_ACCESS_KEY }}
-    with:
-      DOCKERFILE_PATH: Dockerfile
-      IMAGE_NAME: echo-server
-      AWS_REGION: us-east-2
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
