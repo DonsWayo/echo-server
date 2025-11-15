@@ -18,7 +18,7 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 WORKDIR /app
 
-COPY --from=builder /app/echo-server .
+COPY --from=builder /build/echo-server .
 
 USER appuser
 
