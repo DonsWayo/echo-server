@@ -1,0 +1,67 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          echo "VERSION_NUMBER=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          cat > release_notes.md << 'EOF'
+          ## 🎉 Echo Server ${{ steps.version.outputs.VERSION }}
+
+          Complete echo server implementation with Fiber v3 framework and full Docker support.
+
+          ### ✨ Features
+          - Support for GET, POST, PUT, PATCH, DELETE methods
+          - Customizable responses via headers or query parameters
+          - Custom HTTP status codes, bodies, and headers
+          - Custom response latency control
+          - Environment variable access
+          - File/folder exploration
+          - Health check endpoint (`/health`)
+          - Docker support with multi-stage builds (amd64 & arm64)
+
+          ### 📦 Docker Image
+          ```bash
+          docker pull ghcr.io/${{ github.repository }}:${{ steps.version.outputs.VERSION }}
+          docker pull ghcr.io/${{ github.repository }}:latest
+          ```
+
+          Available for both `linux/amd64` and `linux/arm64` platforms.
+
+          ### 📝 Changes in this Release
+          See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for detailed changes.
+
+          ### 📚 Documentation
+          See [README.md](https://github.com/${{ github.repository }}/blob/main/README.md) for complete usage instructions.
+          EOF
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
